@@ -1,0 +1,12 @@
+# real settings and secrets never go in git
+kindle/config.json
+kindle/integrations/*.env
+*.env
+
+# downloaded / device-specific
+kindle/vendor/
+kindle/fonts/
+*.pyc
+__pycache__/
+.DS_Store
+preview*.png

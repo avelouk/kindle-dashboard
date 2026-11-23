@@ -1,0 +1,6 @@
+# Pure-Python libraries copied to the Kindle (its Python has no pip). Installed into kindle/vendor/
+# by tools/fetch-vendor.sh, pinned to versions that still run on the Kindle's Python 3.9.
+icalendar
+recurring-ical-events
+tzdata
+typing_extensions

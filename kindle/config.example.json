@@ -1,0 +1,26 @@
+{
+  "latitude": 51.5072,
+  "longitude": -0.1276,
+  "timezone": "Europe/London",
+
+  "calendars": [
+    {"name": "Personal", "url": "https://calendar.google.com/calendar/ical/YOUR_ID/private-YOUR_KEY/basic.ics", "marker": "circle"},
+    {"name": "Work", "url": "https://example.com/work.ics", "marker": "square"}
+  ],
+
+  "buttons": [
+    {
+      "id": "example",
+      "label": "Say hello",
+      "command": ["/bin/sh", "-c", "echo hello >> /mnt/us/dash/hello.txt"],
+      "style": "primary",
+      "weight": 1,
+      "busy_label": "Working…",
+      "ok_label": "Done",
+      "timeout": 90
+    }
+  ],
+
+  "refresh_minutes": 15,
+  "restart_hour": 4
+}
