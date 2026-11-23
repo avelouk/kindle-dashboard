@@ -7,8 +7,8 @@
 set -e
 cd "$(dirname "$0")/.."
 KINDLE="${KINDLE:-root@192.168.15.244}"
-SSH="ssh -o ConnectTimeout=8 -o LogLevel=ERROR"
-SCP="scp -q -O -o ConnectTimeout=8"
+SSH="ssh $SSH_OPTS -o ConnectTimeout=8 -o LogLevel=ERROR"   # SSH_OPTS: e.g. "-F ~/.ssh/kindle_config"
+SCP="scp $SSH_OPTS -q -O -o ConnectTimeout=8"
 
 python3 -m py_compile kindle/dash.py kindle/render.py
 [ -d kindle/vendor ] || { echo "kindle/vendor missing: run tools/fetch-vendor.sh first"; exit 1; }
