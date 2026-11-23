@@ -21,6 +21,7 @@ Expect it to be custom. Your integrations go in `kindle/integrations/` and your 
 - **Weather** from [Open-Meteo](https://open-meteo.com/) (free, no API key): current temperature, today's high/low and rain, and a 2-hourly strip with mm of rain.
 - **Calendars**: any number of iCal (`.ics`) links, recurring events included, each with its own marker shape. Google Calendar's "secret address in iCal format" works.
 - **Buttons**: up to 4 touch buttons, each runs a shell command on the Kindle. Exit code 0 shows "Done", anything else "Failed".
+- **Tap-to-light**: the front light stays off and any tap turns it on for 30 s (configurable, or always on/off).
 - **Runs unattended**: starts at boot, keeps the Kindle awake, survives broken data and network outages, keeps the last good data on screen, rotates its log, restarts itself nightly. See "Stability rules" in `CLAUDE.md`.
 
 ## Hardware it's known to work on

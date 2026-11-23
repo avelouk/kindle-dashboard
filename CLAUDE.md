@@ -64,6 +64,7 @@ mkdir -p /mnt/us/update.bin.tmp.partial
 - **Keep it awake**: `lipc-set-prop com.lab126.powerd preventScreenSaver 1`. With the UI stopped, the dashboard re-asserts it on every refresh.
 - **Firewall**: iptables blocks incoming connections and UDP broadcast replies. Prefer designs that only make outgoing connections.
 - **Screen**: FBInk at `/mnt/us/usbnet/bin/fbink`. `fbink -f -g file=x.png` does a full refresh (black flash, clears ghosting). Without `-f` it's a quiet update. For a partial update: `-g file=x.png,x=..,y=..`.
+- **Front light**: `lipc-set-prop com.lab126.powerd flIntensity 0..24`. On the PW1, 0 still leaves a faint glow; writing `0` to `/sys/devices/system/fl_tps6116x/fl_tps6116x0/fl_intensity` turns it fully off (other models have a different path). `set_light()` in dash.py does both.
 - **Touch**: `/dev/input/event0`, coordinates 1:1 with screen pixels on the PW1 (check with `evtest` on other models).
 - **The e-ink screen keeps the last image when nothing is running.** A frozen dashboard looks alive. The ticking clock is the health indicator.
 - **Kindle Python 3.9**: no 3.10+ syntax (no `match`, no `X | Y` types). Vendored libs must support 3.9.
@@ -78,7 +79,7 @@ mkdir -p /mnt/us/update.bin.tmp.partial
   - a separate thread reads taps. 5 taps in the top-left corner within 5 s: exit and restore the stock UI until reboot.
 - `kindle/render.py` takes `(now, weather, events, buttons, button_state, legend, errors)` and returns a PIL image. Each screen section draws inside its own try/except.
 - `kindle/dash.conf` is the upstart job: `start on started framework`, respawn, 20 s delay. Kill switch: create `/mnt/us/dash/DISABLE`. Installed to `/etc/upstart/dash.conf`.
-- Config (`kindle/config.json`): location, `calendars` (`name`, `url`, `marker`: circle/square/ring/diamond), `buttons`, `refresh_minutes`, `restart_hour`. See `config.example.json`.
+- Config (`kindle/config.json`): location, `calendars` (`name`, `url`, `marker`: circle/square/ring/diamond), `buttons`, `light` (`mode`: tap/on/off/keep, `level` 0-24, `seconds`), `refresh_minutes`, `restart_hour`. See `config.example.json`.
 
 ### Adding a button
 

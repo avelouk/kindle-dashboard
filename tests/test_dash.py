@@ -29,4 +29,19 @@ dash.LOG_MAX = 100
 for i in range(50):
     dash.log("line", i)
 assert os.path.getsize(dash.LOG) < 400 and os.path.exists(dash.LOG + ".1"), "log must rotate"
+# tap-to-light: off at rest, on after a tap, off again after `seconds`
+calls = []
+dash.set_light = lambda level: calls.append(level)
+cfg = {"mode": "tap", "level": 13, "seconds": 3}
+light = dash.Light(lambda: cfg)
+light.apply()
+assert calls == [0], calls
+light.tapped(); light.tapped()          # second tap only extends the timer
+assert calls == [0, 13], calls
+light.tick(); assert calls == [0, 13]   # not yet
+light.until = 1                          # pretend the time ran out
+light.tick(); assert calls == [0, 13, 0], calls
+cfg["mode"] = "on"; light.apply(); assert calls[-1] == 13
+cfg["mode"] = "keep"; n = len(calls); light.apply(); light.tapped(); light.restore(); assert len(calls) == n
+dash.Light(lambda: {"level": "junk"}).settings()  # bad config must not raise
 print("ok: dash helpers")

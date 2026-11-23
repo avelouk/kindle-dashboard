@@ -44,6 +44,8 @@ DEFAULT_CONFIG = {
     "buttons": [],     # [{"id": "...", "label": "...", "command": ["{python}", "integrations/x.py"], ...}]
     "refresh_minutes": 15,
     "restart_hour": 4,  # daily self-restart (fresh process) at this local hour
+    # front light: "tap" = off, any tap lights it for `seconds`; "on" = always on; "off"; "keep" = don't touch
+    "light": {"mode": "tap", "level": 12, "seconds": 30},
 }
 WEATHER_MAX_AGE = 3 * 3600      # hide weather older than this
 CALENDAR_MAX_AGE = 48 * 3600    # drop a calendar's events if it hasn't loaded for this long
@@ -131,6 +133,69 @@ def keep_awake():
     sh(["lipc-set-prop", "com.lab126.powerd", "preventScreenSaver", "1"], timeout=10)
 
 
+FL_SYSFS = "/sys/devices/system/fl_tps6116x/fl_tps6116x0/fl_intensity"  # PW1; other models differ
+
+
+def set_light(level):
+    """Front light 0..24 via powerd. Level 0 through powerd still leaves a faint glow on the PW1,
+    so "off" also writes 0 to the hardware control when it exists."""
+    level = max(0, min(24, int(level)))
+    sh(["lipc-set-prop", "com.lab126.powerd", "flIntensity", str(level)], timeout=10)
+    if level == 0 and os.path.exists(FL_SYSFS):
+        try:
+            with open(FL_SYSFS, "w") as f:
+                f.write("0")
+        except Exception as e:
+            log("light off via sysfs failed", e)
+
+
+class Light:
+    """Tap-to-light: off by default, on for a while after any tap."""
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.until = 0
+        self.lock = threading.Lock()
+
+    def settings(self):
+        c = self.cfg() or {}
+        try:
+            return str(c.get("mode", "tap")), int(c.get("level", 12)), max(3, int(c.get("seconds", 30)))
+        except (TypeError, ValueError):
+            return "tap", 12, 30
+
+    def apply(self):
+        """Put the light in its resting state (called at start and on every refresh)."""
+        mode, level, _ = self.settings()
+        with self.lock:
+            if mode == "on":
+                set_light(level)
+            elif mode in ("off", "tap") and time.time() >= self.until:
+                set_light(0)
+
+    def tapped(self):
+        mode, level, seconds = self.settings()
+        if mode != "tap":
+            return
+        with self.lock:
+            if time.time() >= self.until:
+                set_light(level)
+            self.until = time.time() + seconds
+
+    def tick(self):
+        mode, _, _ = self.settings()
+        with self.lock:
+            if mode == "tap" and self.until and time.time() >= self.until:
+                self.until = 0
+                set_light(0)
+
+    def restore(self):
+        """Leaving the dashboard: give the normal Kindle a usable light."""
+        mode, level, _ = self.settings()
+        if mode != "keep":
+            set_light(level)
+
+
 # ---------------------------------------------------------------- dashboard
 
 class Dashboard:
@@ -146,6 +211,7 @@ class Dashboard:
         self.last_success = time.time()
         self.last_wifi_kick = 0
         self.started = time.time()
+        self.light = Light(lambda: self.cfg.get("light"))
         self.running = True
         self._load_cache()
         self.started_day = self.now().date()
@@ -413,6 +479,7 @@ class Dashboard:
                         log("tap handler error", traceback.format_exc())
 
     def on_tap(self, x, y, corner_taps):
+        self.safe(self.light.tapped)
         if x < 120 and y < 120:
             t = time.time()
             corner_taps[:] = [c for c in corner_taps if t - c < 5] + [t]
@@ -430,6 +497,7 @@ class Dashboard:
     # ---------- main ----------
     def run(self):
         threading.Thread(target=self.touch_loop, daemon=True).start()
+        self.safe(self.light.apply)
         self.safe(self.draw, flash=True)  # show cached data right away
         next_fetch = 0
         last_hour = self.now().strftime("%Y%m%d%H")
@@ -443,6 +511,7 @@ class Dashboard:
                 if time.time() >= next_fetch:
                     self.cfg = load_config()
                     keep_awake()
+                    self.safe(self.light.apply)
                     if self.clock_ok():
                         self.safe(self.fetch)
                     else:
@@ -457,9 +526,10 @@ class Dashboard:
                 elif now.strftime("%H:%M") != last_clock:
                     self.safe(self.draw_clock)
                 last_clock = self.now().strftime("%H:%M")
+                self.safe(self.light.tick)
             except Exception:
                 log("loop error", traceback.format_exc())
-            time.sleep(5)
+            time.sleep(1)
 
     def restart(self):
         """Daily fresh start in the same process slot (keeps the stock UI stopped)."""
@@ -485,8 +555,15 @@ if __name__ == "__main__":
     log("starting" + (" (daily restart)" if "--restarted" in sys.argv else ""))
     if "--restarted" not in sys.argv:
         kindle_ui(False)
+    dashboard = None
     try:
-        Dashboard().run()
+        dashboard = Dashboard()
+        dashboard.run()
     finally:
         log("stopping")
+        if dashboard is not None:
+            try:
+                dashboard.light.restore()
+            except Exception:
+                pass
         kindle_ui(True)

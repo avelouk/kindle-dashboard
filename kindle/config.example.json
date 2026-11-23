@@ -21,6 +21,8 @@
     }
   ],
 
+  "light": {"mode": "tap", "level": 12, "seconds": 30},
+
   "refresh_minutes": 15,
   "restart_hour": 4
 }
